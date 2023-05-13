@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { Row, Col, Form, Button, InputGroup } from 'react-bootstrap'
 import { app } from '../firebaseinit'
-import { getFirestore, doc, getDoc } from 'firebase/firestore'
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore'
 import { getStorage, uploadBytes, ref, getDownloadURL } from 'firebase/storage'
 
 const MyPage = ({ history }) => {
     const [loading, setLoading] = useState(false);
     const uid = sessionStorage.getItem("uid");
     const db = getFirestore(app);
-
+    const storage = getStorage(app);
     const [image, setImage] = useState('https://via.placeholder.com/200x200')
     const [file, setFile] = useState(null);
-    
+
     const [form, setForm] = useState({
-        email:sessionStorage.getItem('email'),
+        email: sessionStorage.getItem('email'),
         name: '무기명',
         address: '인천 미추홀구 인하로 100',
         phone: '032-860-7144',
@@ -34,15 +34,30 @@ const MyPage = ({ history }) => {
         setFile(e.target.files[0]);
     }
 
-    const getUser = async() => {
+    const getUser = async () => {
         setLoading(true)
         const user = await getDoc(doc(db, 'user', uid))
         console.log(user.data())
-        setForm(user.data());
+        setForm(user.data())
+        setImage(user.data().photo ? user.data().photo : 'https://via.placeholder.com/200x200')
         setLoading(false)
     }
 
-    useEffect(()=>{
+    const onUpdate = async () => {
+        if (!window.confirm('수정된 내용을 저장하실래요?')) return;
+        if (file) {
+            const snapshot = await uploadBytes(ref(storage, `/photo/${Date.now()}.jpg`), file);
+            const url = await getDownloadURL(snapshot.ref);
+
+            setDoc(doc(db, 'user', uid), { ...form, photo: url })
+
+        }
+        else {
+            await setDoc(doc(db, 'user', uid), form);
+        }
+    }
+
+    useEffect(() => {
         getUser();
     }, [])
 
@@ -53,7 +68,12 @@ const MyPage = ({ history }) => {
                 <h1 className='text-center mb-5'>회원정보</h1>
                 <Form className='px-3'>
                     <InputGroup className='my-2'>
-                        <InputGroup.Text className='px-5'>성 명</InputGroup.Text>
+                        <InputGroup.Text className='px-5'>메 일</InputGroup.Text>
+                        <Form.Control readOnly
+                            value={sessionStorage.getItem('email')} />
+                    </InputGroup>
+                    <InputGroup className='my-2'>
+                        <InputGroup.Text className='px-5'>이 름</InputGroup.Text>
                         <Form.Control value={name}
                             name="name" onChange={onChange} />
                     </InputGroup>
@@ -78,8 +98,8 @@ const MyPage = ({ history }) => {
                             type="file" />
                     </div>
                     <div className='text-center my-3'>
-                        <Button
-                            className='px-5'>정보저장</Button>
+                        <Button onClick={onUpdate}
+                            className='px-5'>정보수정</Button>
                     </div>
                 </Form>
             </Col>

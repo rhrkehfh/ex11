@@ -27,6 +27,7 @@ const LoginPage = ({history}) => {
         setLoading(true)
         signInWithEmailAndPassword(auth, email, password)
             .then(success => {
+                sessionStorage.setItem('uid',success.user.uid)
                 sessionStorage.setItem('email',email)
                 alert('Success')
                 setLoading(false)
